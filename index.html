@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Truth or Dare Ultimate</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+body{
+margin:0;
+background:black;
+color:white;
+font-family:Poppins;
+overflow:hidden;
+text-align:center;
+}
+
+/* ✅ FIXED BACKGROUND LAYER */
+#bg{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:-1;
+overflow:hidden;
+}
+
+/* emojis */
+.emoji{
+position:absolute;
+font-size:2rem;
+animation:float 7s linear infinite;
+pointer-events:none;
+}
+
+@keyframes float{
+0%{transform:translateY(100vh);opacity:0;}
+50%{opacity:1;}
+100%{transform:translateY(-10vh);opacity:0;}
+}
+
+.title{
+font-family:Bebas Neue;
+font-size:5.5rem;
+margin-top:18vh;
+}
+
+.blue{color:#00aaff;text-shadow:0 0 15px #00aaff;}
+.red{color:#ff2b2b;text-shadow:0 0 15px #ff2b2b;}
+
+button{
+padding:12px 18px;
+border:none;
+border-radius:12px;
+cursor:pointer;
+margin:5px;
+transition:0.2s;
+}
+
+button:hover{transform:scale(1.1);}
+
+.truth-btn{
+color:#00aaff;
+font-size:1.5rem;
+font-weight:bold;
+background:rgba(0,170,255,0.15);
+}
+
+.dare-btn{
+color:#ff2b2b;
+font-size:1.5rem;
+font-weight:bold;
+background:rgba(255,43,43,0.15);
+}
+
+section{display:none;}
+
+.center{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+}
+
+/* round popup */
+#roundPopup{
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%);
+font-family:Bebas Neue;
+font-size:2rem;
+display:none;
+z-index:5;
+}
+
+/* ✅ FIXED TRANSITION SCREEN */
+#transition{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:black;
+display:none;
+align-items:center;
+justify-content:center;
+font-size:3rem;
+opacity:0;
+transition:1s;
+white-space:pre-line;
+padding:20px;
+text-align:center;
+z-index:10;
+}
+
+/* game */
+#game{transition:0.4s;}
+
+#nextBtn{
+position:fixed;
+right:30px;
+top:50%;
+transform:translateY(-50%);
+background:#222;
+color:white;
+padding:18px 24px;
+font-size:1.1rem;
+border-radius:14px;
+font-weight:bold;
+box-shadow:0 0 15px rgba(255,255,255,0.15);
+z-index:6;
+}
+
+#nextBtn:hover{
+transform:translateY(-50%) scale(1.08);
+}
+</style>
+</head>
+
+<body>
+
+<div id="bg"></div>
+<div id="roundPopup"></div>
+<div id="transition"></div>
+
+<section id="home" class="center" style="display:block;">
+<div class="title">
+<span class="blue">Truth</span> or <span class="red">Dare</span>
+</div>
+<button onclick="goPlayers()">Start Game</button>
+</section>
+
+<section id="players" class="center">
+<h2>Players</h2>
+<input id="name" placeholder="Enter name">
+<button onclick="addPlayer()">Add</button>
+<ul id="list"></ul>
+<button onclick="goRules()">Continue</button>
+</section>
+
+<section id="rules" class="center">
+<h2>⚠ RULES ⚠</h2>
+<p>Finish all truth or dare challenges.</p>
+<p>This should be supervised.</p>
+<button onclick="startGame()">Begin</button>
+</section>
+
+<section id="game" class="center">
+<h2 id="player"></h2>
+
+<button class="truth-btn" onclick="choose('truth')">TRUTH</button>
+<button class="dare-btn" onclick="choose('dare')">DARE</button>
+
+<p id="task"></p>
+
+<button id="nextBtn" onclick="nextTurn()">Next ➜</button>
+</section>
+
+<script>
+
+const home=document.getElementById("home");
+const playersSec=document.getElementById("players");
+const rulesSec=document.getElementById("rules");
+const gameSec=document.getElementById("game");
+
+const playerBox=document.getElementById("player");
+const taskBox=document.getElementById("task");
+const listBox=document.getElementById("list");
+const nextBtn=document.getElementById("nextBtn");
+
+const bg=document.getElementById("bg");
+const roundPopup=document.getElementById("roundPopup");
+const transition=document.getElementById("transition");
+
+let players=[];
+let index=0;
+let round=1;
+let turns=0;
+let locked=false;
+let nextLocked=false;
+let gameActive=false;
+let used=new Set();
+
+const limits={1:10,2:15,3:20};
+
+/* ENTER */
+document.getElementById("name").addEventListener("keypress",e=>{
+if(e.key==="Enter") addPlayer();
+});
+
+/* EMOJIS */
+const emojis=["😈","😇","💀","😭","😕","😢"];
+
+setInterval(()=>{
+if(!gameActive) return;
+if(bg.children.length>25) return;
+
+let e=document.createElement("div");
+e.className="emoji";
+e.innerText=emojis[Math.floor(Math.random()*emojis.length)];
+e.style.left=Math.random()*100+"vw";
+bg.appendChild(e);
+setTimeout(()=>e.remove(),7000);
+},500);
+
+/* NAV */
+function goPlayers(){
+home.style.display="none";
+playersSec.style.display="block";
+}
+
+function goRules(){
+if(players.length===0){
+alert("Add at least 1 player");
+return;
+}
+playersSec.style.display="none";
+rulesSec.style.display="block";
+}
+
+function startGame(){
+rulesSec.style.display="none";
+gameSec.style.display="block";
+
+gameActive=true;
+
+index=0;
+round=1;
+turns=0;
+used.clear();
+
+showPlayer();
+popup();
+}
+
+/* PLAYERS */
+function addPlayer(){
+let n=document.getElementById("name");
+let value=n.value.trim();
+
+if(!value) return;
+if(players.includes(value)) return;
+
+players.push(value);
+
+let li=document.createElement("li");
+li.textContent=value;
+listBox.appendChild(li);
+
+n.value="";
+}
+
+/* PLAYER */
+function showPlayer(){
+if(players.length===0) return;
+
+playerBox.innerText=players[index]+"'s turn";
+taskBox.innerText="";
+nextBtn.style.display="none";
+}
+
+/* LINK SUPPORT */
+function handleTask(text){
+if(text.startsWith("http")){
+window.open(text,"_blank");
+taskBox.innerText="Opening link...";
+}else{
+taskBox.innerText=text;
+}
+}
+
+/* GAME */
+function choose(type){
+if(locked||!gameActive) return;
+locked=true;
+
+let pools=getPools();
+let arr=type==="truth"?pools.truth:pools.dare;
+
+let available=arr.filter(x=>!used.has(x));
+if(available.length===0){
+used.clear();
+available=arr;
+}
+
+let pick=available[Math.floor(Math.random()*available.length)];
+used.add(pick);
+
+handleTask(pick);
+
+turns++;
+nextBtn.style.display="block";
+
+setTimeout(()=>locked=false,400);
+}
+
+function nextTurn(){
+if(nextLocked||!gameActive) return;
+nextLocked=true;
+
+nextBtn.style.display="none";
+
+setTimeout(()=>{
+if(turns>=limits[round]){
+nextRound();
+}else{
+index=(index+1)%players.length;
+showPlayer();
+}
+nextLocked=false;
+},300);
+}
+
+/* ROUND SYSTEM */
+function popup(){
+roundPopup.innerText="ROUND "+round;
+roundPopup.style.display="block";
+setTimeout(()=>roundPopup.style.display="none",2000);
+}
+
+function nextRound(){
+
+gameActive=false;
+
+taskBox.innerText="";
+playerBox.innerText="";
+nextBtn.style.display="none";
+
+round++;
+
+transition.style.display="flex";
+transition.style.opacity=1;
+
+transition.innerText = round===3
+? "⚠️ Next round is harder.\nBe ready."
+: "Next Round...";
+
+setTimeout(()=>{
+transition.innerText=round>3?"GAME OVER 💀":"ROUND "+round+" 💀";
+},2000);
+
+setTimeout(()=>{
+transition.style.opacity=0;
+
+setTimeout(()=>{
+
+if(round>3){
+gameSec.style.display="none";
+home.style.display="block";
+
+players=[];
+listBox.innerHTML="";
+round=1;
+turns=0;
+index=0;
+gameActive=false;
+return;
+}
+
+transition.style.display="none";
+turns=0;
+used.clear();
+
+gameActive=true;
+
+popup();
+showPlayer();
+
+},800);
+
+},3500);
+}
+
+/* ===== YOUR CUSTOM QUESTIONS (UNCHANGED) ===== */
+function getPools(){
+
+if(round===1){
+return {
+truth:[
+"Did you ever attempt to terk or twerked before","Do you have a secret ambition","Whats your ideal country of doing the deed","Spt or swallow",
+"What is your biggest fear","which food do you hate the most","Do you like cooking","Whose your celebrity crush","Whats an embarrsng fact about yourself"
+],
+dare:[
+"do 3 pushups or get 3 slaps","Make your opposition laugh within 5 mins or they get a chance for any dare for the futur to be swapped","blindfold your opposition and put 3 things in their mouth having to guess what it is","Get on all fours and twerk","kick your oppisition",
+"Slap your opposition","Flash yourself for 10 seconds","put an ice cube into your mouth until it melts then next dare continues","Look at the oppiste player for 3 mins without laughing","Recieve a massage for 3 minutes of other players choice"
+]
+};
+}
+
+if(round===2){
+return {
+truth:[
+"Whats your stupidest fantasy","do you ever think of becoming gay","What food would u put cum on to try","Whats your favourite position","If you had 50 million. what would be the first thing you buy","Truth 13","did you ever think of kissing the same gender as yourself","Would u walk publicly naked for 50k"
+],
+dare:[
+"Lose 2 layers","Add 1 layer","watch a porn for 3 minutes whilst opposition gives head","massage of partners choice for2 minutes","Masterbate slowly naked with no clothes for 1 full round until opposition has completed their truth or dare",
+"Make him/her wear a g-string","swap underwear for 10 rounds","Massage his/her butt for 2 minutes","Suck right next to the private part for 40 seconds","Suck right next to the private part for 40 seconds",
+"Lose 2 layers of clothing","Lick upper thighs","Loae 1 layer of clohing","Lick anywhere of other players choice for 30 seconds"
+]
+};
+}
+
+return {
+truth:[
+"When was the last time u watched porn","How many penises is too many","Whats your wildest fantasy","Have you ever has an orgasm","Would u eat your own creampie",
+"Would you let anyone suck your ass","What sex toys would u like to try","What kind of porn do u like and hate","Would u ever do an orgy","How old were u when u first came",
+"Would you piss on your opposition","you could fuck anyone in the world(celebrity, politician, social media influencer, etc) who would it be?","Missionary, doggy style, cowgirl or 69","When was the last time u masterbated","Have you ever tasted cum"
+],
+dare:[
+"doggy style dry humping for 2minutes","if possible ,smoke a cigg/vape and suck penis/vagna whilst blowing smoke out for 50seconds","go to website \"sexpositions.club\" and recreate the position for 2 minutes","go to website \"sexpositions.club\" and recreate the position for 3 minutes","act like having sec but in diffent gender roles.eg,(m=vagina/f=penis)",
+"precum on a something edible and make opposition taste","get naked for 1 round (no covering.Stand straight up)","get your opposition aroused in 30 seconds or do get made a custom dare by the opposition","Masterbate infront of partner for 15 seconds","cum on face(only on round 20)",
+"suck dick/pussy for 1 minute","put a syrup or cram on tip of dick/vagina",
+"missionary inbetween thighs for 1 minute","Cowgirl dry humping for 1 minute","doggy style dry humping",
+"Find porn to watch together for 5 minutes",
+"M =hanjob whilst sucking balls F = eat pussy while fingering for30 seconds",
+"Rub you pussy/penis on partners face for 30 seconds",
+"Go onto the website \"sexpositions.club\" and recreate the Book for 2 minutes",
+"Go onto the website \"sexpositions.club\" and recreate the scorpio for 3 minutes"
+]
+};
+}
+
+</script>
+
+</body>
+</html>
